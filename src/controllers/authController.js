@@ -1,85 +1,52 @@
-import User from '../models/User.js';
-import jwt from 'jsonwebtoken';
+import crypto from "crypto";
+import jwt from "jsonwebtoken";
+import User from "../models/User.js";
+import nodemailer from "nodemailer";
 
-export const register = async (req, res) => {
+// CONFIGURAÇÃO DO EMAIL
+const transporter = nodemailer.createTransport({
+  service: "gmail",
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS
+  }
+});
+
+// FUNÇÃO PARA ENVIAR EMAIL DE VERIFICAÇÃO
+async function sendVerificationEmail(email, token) {
+  const link = `${process.env.FRONTEND_URL}/verificar-email?token=${token}`;
+
+  await transporter.sendMail({
+    from: `"Meu Blog" <${process.env.EMAIL_USER}>`,
+    to: email,
+    subject: "Verifique seu e-mail",
+    html: `
+      <h2>Confirme seu e-mail</h2>
+      <p>Clique no link abaixo para ativar sua conta:</p>
+      <a href="${link}">${link}</a>
+      <p>Se não foi você, ignore este e-mail.</p>
+    `
+  });
+}
+
+// =============================
+// 📌 REGISTRO
+// =============================
+export async function registerUser(req, res) {
   try {
-    const { username, email, password } = req.body;
-    
-    let user = await User.findOne({ $or: [{ email }, { username }] });
-    if (user) {
-      return res.status(400).json({ message: 'Usuário já existe' });
+    const { username, email, password, bio } = req.body;
+
+    if (!username || !email || !password) {
+      return res.status(400).json({ error: "Preencha todos os campos obrigatórios." });
     }
-    
-    user = new User({ username, email, password });
-    await user.save();
-    
-    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
-    
-    res.status(201).json({ 
-      token, 
-      user: { 
-        id: user._id, 
-        username: user.username, 
-        email: user.email 
-      } 
-    });
-  } catch (error) {
-    res.status(500).json({ message: 'Erro ao registrar usuário', error: error.message });
-  }
-};
 
-export const login = async (req, res) => {
-  try {
-    const { email, password } = req.body;
-    
-    const user = await User.findOne({ email });
-    if (!user) {
-      return res.status(400).json({ message: 'Credenciais inválidas' });
+    // validar email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ error: "E-mail inválido." });
     }
-    
-    const isMatch = await user.comparePassword(password);
-    if (!isMatch) {
-      return res.status(400).json({ message: 'Credenciais inválidas' });
-    }
-    
-    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
-    
-    res.json({ 
-      token, 
-      user: { 
-        id: user._id, 
-        username: user.username, 
-        email: user.email,
-        bio: user.bio,
-        profilePicture: user.profilePicture
-      } 
-    });
-  } catch (error) {
-    res.status(500).json({ message: 'Erro ao fazer login', error: error.message });
-  }
-};
 
-export const getProfile = async (req, res) => {
-  try {
-    const user = await User.findById(req.user.id).select('-password');
-    res.json(user);
-  } catch (error) {
-    res.status(500).json({ message: 'Erro ao buscar perfil', error: error.message });
-  }
-};
-
-export const updateProfile = async (req, res) => {
-  try {
-    const { bio, username } = req.body;
-    
-    const user = await User.findByIdAndUpdate(
-      req.user.id,
-      { bio, username, updatedAt: Date.now() },
-      { new: true }
-    ).select('-password');
-    
-    res.json(user);
-  } catch (error) {
-    res.status(500).json({ message: 'Erro ao atualizar perfil', error: error.message });
-  }
-};
+    // verificar duplicados
+    const emailExists = await User.findOne({ email: email.toLowerCase() });
+    if (emailExists) {
+      return res.status(400).json({ error: "E
