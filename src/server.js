@@ -1,14 +1,14 @@
-import express from 'express';
-import mongoose from 'mongoose';
-import cors from 'cors';
-import dotenv from 'dotenv';
+import express from "express";
+import mongoose from "mongoose";
+import cors from "cors";
+import dotenv from "dotenv";
 
 // Importar rotas
-import authRoutes from './routes/authRoutes.js';
-import storyRoutes from './routes/storyRoutes.js';
-import communityRoutes from './routes/communityRoutes.js';
-import communityPostRoutes from './routes/communityPostRoutes.js';
-import commentRoutes from './routes/commentRoutes.js';
+import authRoutes from "./routes/authRoutes.js";
+import storyRoutes from "./routes/storyRoutes.js";
+import communityRoutes from "./routes/communityRoutes.js";
+import communityPostRoutes from "./routes/communityPostRoutes.js";
+import commentRoutes from "./routes/commentRoutes.js";
 
 dotenv.config();
 
@@ -21,22 +21,27 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Conexão com MongoDB
-mongoose.connect(process.env.MONGODB_URI)
-  .then(() => console.log('MongoDB conectado'))
-  .catch(err => console.log('Erro de conexão MongoDB:', err));
+mongoose
+  .connect(process.env.MONGO_URL, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true
+  })
+  .then(() => console.log("MongoDB conectado"))
+  .catch((err) => console.log("Erro de conexão MongoDB:", err));
 
 // Rotas
-app.use('/api/auth', authRoutes);
-app.use('/api/stories', storyRoutes);
-app.use('/api/communities', communityRoutes);
-app.use('/api/community-posts', communityPostRoutes);
-app.use('/api/comments', commentRoutes);
+app.use("/api/auth", authRoutes);
+app.use("/api/stories", storyRoutes);
+app.use("/api/communities", communityRoutes);
+app.use("/api/community-posts", communityPostRoutes);
+app.use("/api/comments", commentRoutes);
 
 // Rota de teste
-app.get('/api/health', (req, res) => {
-  res.json({ message: 'Servidor funcionando!' });
+app.get("/api/health", (req, res) => {
+  res.json({ message: "Servidor funcionando!" });
 });
 
+// Iniciar servidor
 app.listen(PORT, () => {
   console.log(`Servidor rodando na porta ${PORT}`);
 });
